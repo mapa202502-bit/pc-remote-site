@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>QR для подключения</title></head>
+<body style="text-align:center; background:#1a1a2e; color:white;">
+    <h2>📱 Отсканируй QR-код телефоном</h2>
+    <div id="qrcode"></div>
+    <p id="url"></p>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <script>
+        const url = window.location.href.replace('/qr', '');
+        document.getElementById('url').innerText = url;
+        new QRCode(document.getElementById('qrcode'), url);
+    </script>
+</body>
+</html>

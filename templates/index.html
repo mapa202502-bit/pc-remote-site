@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>PC Remote Control</title>
+    <style>
+        * {
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            background: #1a1a2e;
+            color: white;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .status {
+            background: #0f3460;
+            padding: 10px;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .status.connected {
+            background: #00b894;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        button {
+            background: #e94560;
+            border: none;
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        button:active {
+            transform: scale(0.95);
+            background: #ff6b6b;
+        }
+        .joypad {
+            background: #16213e;
+            padding: 20px;
+            border-radius: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .joystick-area {
+            width: 200px;
+            height: 200px;
+            background: #0f3460;
+            border-radius: 50%;
+            margin: 0 auto;
+            position: relative;
+            touch-action: none;
+        }
+        .joystick-handle {
+            width: 60px;
+            height: 60px;
+            background: #e94560;
+            border-radius: 50%;
+            position: absolute;
+            top: 70px;
+            left: 70px;
+            cursor: pointer;
+        }
+        .coords {
+            margin-top: 10px;
+            font-size: 12px;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 10px;
+            border: none;
+            background: #0f3460;
+            color: white;
+        }
+        .keyboard-row {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+        .key-btn {
+            background: #16213e;
+            padding: 12px;
+            font-size: 14px;
+        }
+        .special-key {
+            background: #e94560;
+        }
+        @media (max-width: 500px) {
+            .grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            .keyboard-row {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="status" id="status">🔌 Подключение...</div>
+    
+    <!-- Настройки -->
+    <input type="text" id="pcIp" placeholder="IP адрес ПК (например 192.168.1.100)" value="192.168.1.100">
+    <button onclick="connectToPC()">🔗 Подключиться</button>
+    
+    <!-- Джойстик для мыши -->
+    <div class="joypad">
+        <h3>🎮 Управление мышью</h3>
+        <div class="joystick-area" id="joystickArea">
+            <div class="joystick-handle" id="joystickHandle"></div>
+        </div>
+        <div class="coords" id="mouseCoords">X: 0, Y: 0</div>
+        <div class="grid" style="grid-template-columns: repeat(3, 1fr); margin-top: 10px;">
+            <button onclick="sendClick('left')">🖱️ ЛКМ</button>
+            <button onclick="sendClick('right')">🖱️ ПКМ</button>
+            <button onclick="sendClick('middle')">🖱️ СКМ</button>
+            <button onclick="sendScroll(100)">⬆️ Вверх</button>
+            <button onclick="sendScroll(-100)">⬇️ Вниз</button>
+            <button onclick="getPosition()">📍 Позиция</button>
+        </div>
+    </div>
+    
+    <!-- Клавиатура -->
+    <div class="joypad">
+        <h3>⌨️ Клавиатура</h3>
+        <div class="keyboard-row">
+            <button class="key-btn" onclick="sendKey('win')">🏠 Win</button>
+            <button class="key-btn" onclick="sendKey('alt')">Alt</button>
+            <button class="key-btn" onclick="sendKey('ctrl')">Ctrl</button>
+            <button class="key-btn" onclick="sendKey('shift')">Shift</button>
+            <button class="key-btn" onclick="sendKey('tab')">Tab</button>
+        </div>
+        <div class="keyboard-row">
+            <button class="key-btn" onclick="sendKey('space')">Пробел</button>
+            <button class="key-btn" onclick="sendKey('enter')">Enter</button>
+            <button class="key-btn" onclick="sendKey('backspace')">⌫</button>
+            <button class="key-btn" onclick="sendKey('delete')">Del</button>
+            <button class="key-btn" onclick="sendKey('esc')">Esc</button>
+        </div>
+        <div class="keyboard-row">
+            <button class="key-btn" onclick="sendKey('up')">⬆️</button>
+            <button class="key-btn" onclick="sendKey('left')">⬅️</button>
+            <button class="key-btn" onclick="sendKey('down')">⬇️</button>
+            <button class="key-btn" onclick="sendKey('right')">➡️</button>
+            <button class="key-btn" onclick="sendKey('f5')">F5</button>
+        </div>
+        <input type="text" id="textToType" placeholder="Введите текст для печати...">
+        <button onclick="sendType()">✍️ Напечатать текст</button>
+    </div>
+    
+    <!-- Системные команды -->
+    <div class="grid">
+        <button onclick="shutdownPC(60)">🔄 Выкл ПК (60с)</button>
+        <button onclick="cancelShutdown()">❌ Отмена выкл</button>
+        <button onclick="openApp('notepad.exe')">📝 Блокнот</button>
+        <button onclick="openApp('calc.exe')">🧮 Калькулятор</button>
+        <button onclick="volumeUp()">🔊 Громкость +</button>
+        <button onclick="volumeDown()">🔉 Громкость -</button>
+        <button onclick="volumeMute()">🔇 Mute</button>
+        <button onclick="sendKey('printscreen')">📸 Print Screen</button>
+    </div>
+    
+    <!-- Голосовые команды -->
+    <div class="joypad">
+        <h3>🎤 Голосовые команды</h3>
+        <button onclick="startVoiceRecognition()" style="background:#00b894;">🎙️ Начать распознавание</button>
+        <p id="voiceResult" style="font-size:12px; margin-top:10px;"></p>
+    </div>
+</div>
+
+<script>
+    let pcUrl = '';
+    let isConnected = false;
+    let joystickActive = false;
+    let lastX = 0, lastY = 0;
+    let moveInterval = null;
+    
+    // Подключение к ПК
+    function connectToPC() {
+        let ip = document.getElementById('pcIp').value;
+        pcUrl = `http://${ip}:5000/api`;
+        fetch(`${pcUrl}/screen_size`)
+            .then(response => response.json())
+            .then(data => {
+                isConnected = true;
+                document.getElementById('status').innerHTML = '✅ Подключено к ПК';
+                document.getElementById('status').classList.add('connected');
+                window.screenWidth = data.width;
+                window.screenHeight = data.height;
+            })
+            .catch(err => {
+                isConnected = false;
+                document.getElementById('status').innerHTML = '❌ Ошибка подключения!';
+                document.getElementById('status').classList.remove('connected');
+                alert('Не удалось подключиться к ПК. Проверь IP адрес и что сервер запущен.');
+            });
+    }
+    
+    // Отправка команды
+    async function sendCommand(endpoint, data = {}) {
+        if (!isConnected && endpoint !== '/screen_size') {
+            alert('Сначала подключись к ПК!');
+            return null;
+        }
+        try {
+            const response = await fetch(pcUrl + endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            return await response.json();
+        } catch (err) {
+            console.error(err);
+            return null;
+        }
+    }
+    
+    async function sendGet(endpoint) {
+        const response = await fetch(pcUrl + endpoint);
+        return await response.json();
+    }
+    
+    // Управление мышью
+    function sendClick(button) {
+        sendCommand('/click', { button: button, clicks: 1 });
+    }
+    
+    function sendScroll(amount) {
+        sendCommand('/scroll', { amount: amount });
+    }
+    
+    async function getPosition() {
+        const pos = await sendGet('/position');
+        if (pos) {
+            document.getElementById('mouseCoords').innerHTML = `📍 X: ${pos.x}, Y: ${pos.y}`;
+        }
+    }
+    
+    // Клавиатура
+    function sendKey(key) {
+        sendCommand('/key', { key: key });
+    }
+    
+    function sendType() {
+        let text = document.getElementById('textToType').value;
+        if (text) {
+            sendCommand('/type', { text: text });
+            document.getElementById('textToType').value = '';
+        }
+    }
+    
+    // Система
+    function shutdownPC(seconds) {
+        if (confirm(`Выключить компьютер через ${seconds} секунд?`)) {
+            sendCommand('/shutdown', { delay: seconds });
+        }
+    }
+    
+    function cancelShutdown() {
+        sendCommand('/cancel_shutdown');
+    }
+    
+    function openApp(path) {
+        sendCommand('/open_app', { path: path });
+    }
+    
+    function volumeUp() {
+        sendCommand('/volume', { action: 'up' });
+    }
+    
+    function volumeDown() {
+        sendCommand('/volume', { action: 'down' });
+    }
+    
+    function volumeMute() {
+        sendCommand('/volume', { action: 'mute' });
+    }
+    
+    // Джойстик
+    const joystickArea = document.getElementById('joystickArea');
+    const joystickHandle = document.getElementById('joystickHandle');
+    
+    function handleJoystickMove(clientX, clientY) {
+        const rect = joystickArea.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        let dx = clientX - centerX;
+        let dy = clientY - centerY;
+        const distance = Math.min(Math.sqrt(dx*dx + dy*dy), 70);
+        const angle = Math.atan2(dy, dx);
+        const handleX = Math.cos(angle) * distance;
+        const handleY = Math.sin(angle) * distance;
+        joystickHandle.style.transform = `translate(${handleX}px, ${handleY}px)`;
+        
+        const speed = distance / 70;
+        if (moveInterval) clearInterval(moveInterval);
+        moveInterval = setInterval(() => {
+            const moveX = Math.cos(angle) * speed * 15;
+            const moveY = Math.sin(angle) * speed * 15;
+            sendCommand('/move', { x: Math.floor(moveX + lastX), y: Math.floor(moveY + lastY) });
+        }, 50);
+    }
+    
+    function resetJoystick() {
+        joystickHandle.style.transform = 'translate(0px, 0px)';
+        if (moveInterval) clearInterval(moveInterval);
+        moveInterval = null;
+    }
+    
+    joystickArea.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        joystickActive = true;
+        const touch = e.touches[0];
+        handleJoystickMove(touch.clientX, touch.clientY);
+    });
+    
+    joystickArea.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        if (joystickActive) {
+            const touch = e.touches[0];
+            handleJoystickMove(touch.clientX, touch.clientY);
+        }
+    });
+    
+    joystickArea.addEventListener('touchend', () => {
+        joystickActive = false;
+        resetJoystick();
+    });
+    
+    // Голосовые команды
+    function startVoiceRecognition() {
+        if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+            alert('Ваш браузер не поддерживает голосовое распознавание');
+            return;
+        }
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'ru-RU';
+        recognition.onresult = (event) => {
+            const command = event.results[0][0].transcript.toLowerCase();
+            document.getElementById('voiceResult').innerHTML = `🎤 Распознано: ${command}`;
+            processVoiceCommand(command);
+        };
+        recognition.start();
+    }
+    
+    function processVoiceCommand(command) {
+        if (command.includes('выключи компьютер')) {
+            shutdownPC(30);
+        } else if (command.includes('отмена')) {
+            cancelShutdown();
+        } else if (command.includes('блокнот')) {
+            openApp('notepad.exe');
+        } else if (command.includes('калькулятор')) {
+            openApp('calc.exe');
+        } else if (command.includes('громче')) {
+            volumeUp();
+        } else if (command.includes('тише')) {
+            volumeDown();
+        } else if (command.includes('нажми')) {
+            const key = command.replace('нажми', '').trim();
+            sendKey(key);
+        } else {
+            sendTypeWithText(command);
+        }
+    }
+    
+    function sendTypeWithText(text) {
+        sendCommand('/type', { text: text });
+    }
+</script>
+</body>
+</html>
